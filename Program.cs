@@ -1,0 +1,144 @@
+﻿using System;
+using System.IO;
+using ioh;
+using Newtonsoft.Json;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // Generate a random directory name
+        string workPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(workPath);
+        string imagePath = Path.Combine(workPath, "images");
+        Directory.CreateDirectory(imagePath);
+
+        string filePath = args[0];
+        string fileName = System.IO.Path.GetFileNameWithoutExtension(filePath);
+        var mainJsonData = new
+        {
+            ProjectName = fileName,
+            ProjectType = "图书",
+            Template = fileName
+        };
+        // 将 main.json 数据序列化为 JSON
+        string mainJson = JsonConvert.SerializeObject(mainJsonData, Formatting.Indented);
+        string mainJsonPath = Path.Combine(workPath, "main.json");
+        File.WriteAllText(mainJsonPath, mainJson);
+        var mapJsonData = new
+        {
+            graphNodeId = 0,
+            cusId=0,
+            cusIndexId = 0,
+            legends = new List<string>(),
+            nodes = new List<string>(),
+            relations = new List<string>(),
+        };
+        // 将 main.json 数据序列化为 JSON
+        string mapJson = JsonConvert.SerializeObject(mapJsonData, Formatting.Indented);
+
+        string questionJsonPath = Path.Combine(workPath, "question.json");
+        string mapJsonPath = Path.Combine(workPath, "map.json");
+        File.WriteAllText(mapJsonPath, mapJson);
+        File.WriteAllText(questionJsonPath, JsonConvert.SerializeObject(TemplateStyleData.Styles, Formatting.Indented)); // 写入json
+
+        List<InputData> InputDataList = new List<InputData>();
+
+        int myId = 1;
+
+        var titleData = new TitleData
+        {
+            Id = myId, // 设置新 ID
+            SortId = myId,
+            InputTitleId = 0,
+            Types = "标题",
+            InputTitleClass = "结构标题", // 标题类型
+            InputTitleStyle = "一级", // 标题样式名称
+            SelectText = "标题1",
+            InputTitleText = "标题1", // 标题内容
+            InputTitleRtfText = "标题1",//标题Rtf内容
+            BeforeNumericUpDown = 0,//标题前间距
+            AfterNumericUpDown = 0,//标题后间距
+            InputTitleRetract =0,//标题缩进
+            InputTitleAfterInterval = 0,//标题序号后间距
+            fontType = "方正标雅宋",
+            EnglishFontType = "方正标雅宋",
+            Alignment = "居中",
+            fontsize = "八号",
+        };
+        InputDataList.Add(titleData);
+        myId++;
+
+        CustomDocument cd = WordToCustomConverter.ParseWordToCustom(args[0]);
+        for(int i = 0; i < cd.Paragraphs.Count; i++)
+        {
+            cd.Paragraphs[i].Id = myId;
+            cd.Paragraphs[i].SortId = myId;
+            cd.Paragraphs[i].ParagraphStyleId = 1;
+            cd.Paragraphs[i].Types = "段落";
+            cd.Paragraphs[i].PagraphType = "通用段落";
+            cd.Paragraphs[i].CurrentId = 1;
+            cd.Paragraphs[i].CommentId = 1;
+            cd.Paragraphs[i].CurrentId = 1;
+            cd.Paragraphs[i].FormulaId = 1;
+            InputDataList.Add(cd.Paragraphs[i]);
+            myId++;
+        }
+
+        for(int i = 0; i < cd.Formulas.Count; i++)
+        {
+            cd.Formulas[i].Id = myId;
+            cd.Formulas[i].SortId = myId;
+            cd.Formulas[i].Types = "公式";
+            InputDataList.Add(cd.Formulas[i]);
+            myId++;
+        }
+
+
+        for (int i = 0; i < cd.images.Count; i++)
+        {
+            string imagesName = System.IO.Path.GetFileName(cd.images[i]);
+            string imageDestPath = Path.Combine(imagePath, imagesName);
+
+            System.IO.File.Copy(cd.images[i], imageDestPath);
+            ImagesUrl imagesUrl = new ImagesUrl
+            {
+                Ratio=100,
+                imageUrl = imagesName,
+            };
+            var newData = new ImageData
+            {
+                Id = myId, // 设置新 ID
+                SortId = myId, // 设置新 ID
+                Types = "图片",
+                InputImageTitle = imagesName,
+                ImagesName = imagesName,//图片名称
+                InputImageUrl = new List<ImagesUrl> {
+                    imagesUrl
+                }
+            };
+
+            InputDataList.Add(newData);
+            myId++;
+        }
+
+
+        for (int i = 0; i < cd.Tables.Count; i++)
+        {
+            cd.Tables[i].Id = myId;
+            cd.Tables[i].SortId = myId;
+            cd.Tables[i].Types = "表格";
+
+            InputDataList.Add(cd.Tables[i]);
+            myId++;
+        }
+        string inputDataListJson = JsonConvert.SerializeObject(InputDataList, Formatting.Indented);
+
+        string projectJsonPath = Path.Combine(workPath, "project.json");
+        File.WriteAllText(projectJsonPath, inputDataListJson); // 写入json
+
+
+        Console.WriteLine(cd);
+
+    }
+}
