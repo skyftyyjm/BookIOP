@@ -231,7 +231,7 @@ class Program
         }
         else
         {
-            Console.WriteLine("err");
+            Console.Write("err");
             return;
         }
 
@@ -245,7 +245,7 @@ class Program
             convertToDocx(inFilePath, outFilePath);
 
         }
-        Console.WriteLine(outFilePath);
+        Console.Write(outFilePath);
 
 
 
