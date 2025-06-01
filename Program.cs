@@ -1,19 +1,19 @@
 ﻿using System;
 using System.IO;
+using System.IO.Compression;
 using ioh;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Bson;
 
 class Program
 {
-    static void Main(string[] args)
+    static void convertToZip(string filePath, string zipFilePath)
     {
-        // Generate a random directory name
         string workPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(workPath);
         string imagePath = Path.Combine(workPath, "images");
         Directory.CreateDirectory(imagePath);
 
-        string filePath = args[0];
         string fileName = System.IO.Path.GetFileNameWithoutExtension(filePath);
         var mainJsonData = new
         {
@@ -28,7 +28,7 @@ class Program
         var mapJsonData = new
         {
             graphNodeId = 0,
-            cusId=0,
+            cusId = 0,
             cusIndexId = 0,
             legends = new List<string>(),
             nodes = new List<string>(),
@@ -59,7 +59,7 @@ class Program
             InputTitleRtfText = "标题1",//标题Rtf内容
             BeforeNumericUpDown = 0,//标题前间距
             AfterNumericUpDown = 0,//标题后间距
-            InputTitleRetract =0,//标题缩进
+            InputTitleRetract = 0,//标题缩进
             InputTitleAfterInterval = 0,//标题序号后间距
             fontType = "方正标雅宋",
             EnglishFontType = "方正标雅宋",
@@ -69,8 +69,8 @@ class Program
         InputDataList.Add(titleData);
         myId++;
 
-        CustomDocument cd = WordToCustomConverter.ParseWordToCustom(args[0]);
-        for(int i = 0; i < cd.Paragraphs.Count; i++)
+        CustomDocument cd = WordToCustomConverter.ParseWordToCustom(filePath);
+        for (int i = 0; i < cd.Paragraphs.Count; i++)
         {
             cd.Paragraphs[i].Id = myId;
             cd.Paragraphs[i].SortId = myId;
@@ -85,7 +85,7 @@ class Program
             myId++;
         }
 
-        for(int i = 0; i < cd.Formulas.Count; i++)
+        for (int i = 0; i < cd.Formulas.Count; i++)
         {
             cd.Formulas[i].Id = myId;
             cd.Formulas[i].SortId = myId;
@@ -103,7 +103,7 @@ class Program
             System.IO.File.Copy(cd.images[i], imageDestPath);
             ImagesUrl imagesUrl = new ImagesUrl
             {
-                Ratio=100,
+                Ratio = 100,
                 imageUrl = imagesName,
             };
             var newData = new ImageData
@@ -136,9 +136,62 @@ class Program
 
         string projectJsonPath = Path.Combine(workPath, "project.json");
         File.WriteAllText(projectJsonPath, inputDataListJson); // 写入json
+  
+        if (System.IO.File.Exists(zipFilePath))
+        {
+            System.IO.File.Delete(zipFilePath);
+        }
+        ZipFile.CreateFromDirectory(workPath, zipFilePath);
+    }
 
 
-        Console.WriteLine(cd);
+    static void Main(string[] args)
+    {
+        // Generate a random directory name
+        string inFilePath;
+        string outFilePath;
+        bool toZip = false;
+
+        if (args.Length == 1)
+        {
+            inFilePath = args[0];
+            if (inFilePath.EndsWith(".docx"))
+            {
+                outFilePath = inFilePath + ".zip";
+                toZip = true;
+            } else if (inFilePath.EndsWith(".zip"))
+            {
+                outFilePath = System.IO.Path.Combine(System.IO.Path.GetFileNameWithoutExtension(inFilePath), ".docx");
+                toZip = false;
+            } else
+            {
+                return;
+            }
+
+        } else if (args.Length == 2)
+        {
+            inFilePath = args[0];
+            if (inFilePath.EndsWith(".docx"))
+            {
+                toZip = true;
+            }
+            outFilePath = args[1];
+        }
+        else
+        {
+            return;
+        }
+
+        if (toZip)
+        {
+            convertToZip(inFilePath, outFilePath);
+        }
+
+
+
+
+        // Compress the directory into a zip file
+
 
     }
 }
