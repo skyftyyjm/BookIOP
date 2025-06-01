@@ -163,10 +163,34 @@ class Program
 
         string projectJsonData = File.ReadAllText(projectJsonPath);
         var inputDataList = JsonConvert.DeserializeObject<List<InputData>>(projectJsonData, new InputDataConverter());
-
-        MathConverter.ConvertLatexToOmml("$\\sqrt{3}$");
-        CustomDocument cd = WordToCustomConverter.ParseWordToCustom(filePath);
-
+        CustomDocument cd = new CustomDocument
+        {
+            Paragraphs = new List<ParagraphData>(),
+            Formulas = new List<Formula>(),
+            images = new List<string>(),
+            Tables = new List<Table>()
+        };
+        foreach (var item in inputDataList)
+        {
+            if (item is ParagraphData paragraph)
+            {
+                cd.Paragraphs.Add(paragraph);
+            }
+            else if (item is Formula formula)
+            {
+                cd.Formulas.Add(formula);
+            }
+            else if (item is ImageData imageData)
+            {
+                string imagePath = Path.Combine(workPath, "images" ,imageData.ImagesName);
+                cd.images.Add(imagePath);
+            }
+            else if (item is Table table)
+            {
+                cd.Tables.Add(table);
+            }
+        }
+       WordToCustomConverter.SaveCustomToWord(cd, docxFilePath);
     }
 
     static void Main(string[] args)
@@ -207,17 +231,21 @@ class Program
         }
         else
         {
+            Console.WriteLine("err");
             return;
         }
 
         if (toZip)
         {
             convertToZip(inFilePath, outFilePath);
+
+
         } else
         {
             convertToDocx(inFilePath, outFilePath);
 
         }
+        Console.WriteLine(outFilePath);
 
 
 

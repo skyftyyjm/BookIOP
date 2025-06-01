@@ -18,13 +18,13 @@ namespace ioh
                 // 创建主文档部分
                 MainDocumentPart mainPart = wordDoc.AddMainDocumentPart();
                 mainPart.Document = new Document();
-                Body body = new Body();
+                mainPart.Document.Body  = new Body();
 
                 // 保存段落
                 foreach (var paragraph in cd.Paragraphs)
                 {
                     Paragraph para = new Paragraph(new Run(new Text(paragraph.InputParagraphText)));
-                    body.Append(para);
+                    mainPart.Document.Body.Append(para);
                 }
 
                 // 保存表格
@@ -41,7 +41,7 @@ namespace ioh
                     //    }
                     //    tbl.Append(tableRow);
                     //}
-                    body.Append(tbl);
+                    mainPart.Document.Body.Append(tbl);
                 }
 
                 // 保存公式
@@ -58,14 +58,15 @@ namespace ioh
                     AddImageToBody(mainPart, imagePath);
                 }
 
-                mainPart.Document.Append(body);
                 mainPart.Document.Save();
             }
         }
 
         private static void AddImageToBody(MainDocumentPart mainPart, string imagePath)
         {
-            ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Png);
+
+            var type = GetImageType(System.IO.Path.GetExtension(imagePath));
+            ImagePart imagePart = mainPart.AddImagePart(type);
             using (FileStream stream = new FileStream(imagePath, FileMode.Open))
             {
                 imagePart.FeedData(stream);
@@ -121,31 +122,7 @@ namespace ioh
                 { DistanceFromTop = 0U, DistanceFromBottom = 0U, DistanceFromLeft = 0U, DistanceFromRight = 0U }
             );
 
-            //var element =
-            //    new Drawing(
-            //        new DW.Inline(
-            //            new DW.Extent() { Cx = 990000L, Cy = 792000L },
-            //            new DW.EffectExtent() { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
-            //            new DW.DocProperties() { Id = (UInt32Value)1U, Name = "Picture" },
-            //            new DW.NonVisualGraphicFrameDrawingProperties(
-            //                new A.GraphicFrameLocks() { NoChangeAspect = true }),
-            //            new A.Graphic(
-            //                new A.GraphicData(
-            //                    new P.Picture(
-            //                        new P.NonVisualPictureProperties(
-            //                            new P.NonVisualDrawingProperties() { Id = (UInt32Value)0U, Name = "New Image" },
-            //                            new P.NonVisualPictureDrawingProperties()),
-            //                        new P.BlipFill(
-            //                            new A.Blip() { Embed = relationshipId },
-            //                            new A.Stretch(new A.FillRectangle())),
-            //                        new P.ShapeProperties(new A.Transform2D(
-            //                            new A.Offset() { X = 0L, Y = 0L },
-            //                            new A.Extents() { Cx = 990000L, Cy = 792000L }),
-            //                            new A.PresetGeometry() { Preset = A.ShapeTypeValues.Rectangle })))
-            //                )
-            //            { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
-            //        ));
-
+    
             mainPart.Document.Body.Append(new Paragraph(new Run(element)));
         }
 
@@ -312,6 +289,19 @@ namespace ioh
                 case "image/bmp": return ".bmp";
                 case "image/tiff": return ".tiff";
                 default: return ".img";
+            }
+        }
+
+        private static PartTypeInfo GetImageType(string contentType)
+        {
+            switch (contentType.ToLower())
+            {
+                case ".png": return ImagePartType.Png;
+                case ".jpg": return ImagePartType.Jpeg;
+                case ".gif": return ImagePartType.Gif;
+                case ".bmp": return ImagePartType.Bmp;
+                case ".tiff": return ImagePartType.Tiff;
+                default: return ImagePartType.Svg;
             }
         }
     }
