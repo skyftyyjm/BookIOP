@@ -1,19 +1,154 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Wordprocessing;
 using DocumentFormat.OpenXml.Packaging;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using A = DocumentFormat.OpenXml.Drawing;
+using P = DocumentFormat.OpenXml.Drawing.Pictures;
 
 using OfficeMath = DocumentFormat.OpenXml.Math.OfficeMath;
+using System.Xml.Linq;
 namespace ioh
 {
     public class WordToCustomConverter
     {
-        /// <summary>
-        /// 从指定的 Word (.docx) 路径读取文档，提取段落、表格、图片、公式等内容，
-        /// 最后返回一个 CustomDocument 对象，并把图片保存到指定的 imageOutputFolder 目录下。
-        /// </summary>
-        /// <param name="docxPath">源 Word 文件路径</param>
-        /// <param name="imageOutputFolder">图片导出目录（必须存在或可自动创建）</param>
-        /// <returns>CustomDocument 对象</returns>
+        public static void SaveCustomToWord(CustomDocument cd, string docxPath)
+        {
+            using (WordprocessingDocument wordDoc = WordprocessingDocument.Create(docxPath, WordprocessingDocumentType.Document))
+            {
+                // 创建主文档部分
+                MainDocumentPart mainPart = wordDoc.AddMainDocumentPart();
+                mainPart.Document = new Document();
+                Body body = new Body();
+
+                // 保存段落
+                foreach (var paragraph in cd.Paragraphs)
+                {
+                    Paragraph para = new Paragraph(new Run(new Text(paragraph.InputParagraphText)));
+                    body.Append(para);
+                }
+
+                // 保存表格
+                foreach (var table in cd.Tables)
+                {
+                    DocumentFormat.OpenXml.Wordprocessing.Table tbl = new DocumentFormat.OpenXml.Wordprocessing.Table();
+                    //foreach (var row in table)
+                    //{
+                    //    TableRow tableRow = new TableRow();
+                    //    foreach (var cell in row)
+                    //    {
+                    //        TableCell tableCell = new TableCell(new Paragraph(new Run(new Text(cell))));
+                    //        tableRow.Append(tableCell);
+                    //    }
+                    //    tbl.Append(tableRow);
+                    //}
+                    body.Append(tbl);
+                }
+
+                // 保存公式
+                foreach (var formula in cd.Formulas)
+                {
+                    // 这里假设有一个方法将公式转换为OfficeMath对象
+                    //OfficeMath officeMath = MathConverter.ConvertLatexToOmml(formula.InputText);
+                    //body.Append(officeMath);
+                }
+
+                // 保存图片
+                foreach (var imagePath in cd.images)
+                {
+                    AddImageToBody(mainPart, imagePath);
+                }
+
+                mainPart.Document.Append(body);
+                mainPart.Document.Save();
+            }
+        }
+
+        private static void AddImageToBody(MainDocumentPart mainPart, string imagePath)
+        {
+            ImagePart imagePart = mainPart.AddImagePart(ImagePartType.Png);
+            using (FileStream stream = new FileStream(imagePath, FileMode.Open))
+            {
+                imagePart.FeedData(stream);
+            }
+
+            AddImageToParagraph(mainPart, mainPart.GetIdOfPart(imagePart));
+        }
+
+        private static void AddImageToParagraph(MainDocumentPart mainPart, string relationshipId)
+        {
+            var element = new Drawing(
+                new DocumentFormat.OpenXml.Drawing.Wordprocessing.Inline(
+                    new DocumentFormat.OpenXml.Drawing.Wordprocessing.Extent() { Cx = 990000L, Cy = 792000L },
+                    new DocumentFormat.OpenXml.Drawing.Wordprocessing.DocProperties() { Id = 1U, Name = "New Image" },
+                    new DocumentFormat.OpenXml.Drawing.Graphic(
+                        new DocumentFormat.OpenXml.Drawing.GraphicData(
+                            new DocumentFormat.OpenXml.Drawing.Pictures.Picture(
+                                new DocumentFormat.OpenXml.Drawing.Pictures.NonVisualPictureProperties(
+                                    new DocumentFormat.OpenXml.Drawing.Pictures.NonVisualDrawingProperties()
+                                    { Id = 0U, Name = "Picture" },
+                                    new DocumentFormat.OpenXml.Drawing.Pictures.NonVisualPictureDrawingProperties()
+                                ),
+                                new DocumentFormat.OpenXml.Drawing.Pictures.BlipFill(
+                                    new DocumentFormat.OpenXml.Drawing.Blip(
+                                        new DocumentFormat.OpenXml.Drawing.BlipExtensionList(
+                                            new DocumentFormat.OpenXml.Drawing.BlipExtension()
+                                            { Uri = "{28A0092B-C50C-407E-A947-70E740481C1C}" }
+                                        )
+                                    )
+                                    {
+                                        Embed = relationshipId,
+                                        CompressionState = DocumentFormat.OpenXml.Drawing.BlipCompressionValues.Print
+                                    },
+                                    new DocumentFormat.OpenXml.Drawing.Stretch(
+                                        new DocumentFormat.OpenXml.Drawing.FillRectangle()
+                                    )
+                                ),
+                                new DocumentFormat.OpenXml.Drawing.Pictures.ShapeProperties(
+                                    new DocumentFormat.OpenXml.Drawing.Transform2D(
+                                        new DocumentFormat.OpenXml.Drawing.Offset() { X = 0L, Y = 0L },
+                                        new DocumentFormat.OpenXml.Drawing.Extents() { Cx = 990000L, Cy = 792000 }
+                                    ),
+                                    new DocumentFormat.OpenXml.Drawing.PresetGeometry(
+                                        new DocumentFormat.OpenXml.Drawing.AdjustValueList()
+                                    )
+                                    { Preset = DocumentFormat.OpenXml.Drawing.ShapeTypeValues.Rectangle }
+                                )
+                            )
+                        )
+                        { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" }
+                    )
+                )
+                { DistanceFromTop = 0U, DistanceFromBottom = 0U, DistanceFromLeft = 0U, DistanceFromRight = 0U }
+            );
+
+            //var element =
+            //    new Drawing(
+            //        new DW.Inline(
+            //            new DW.Extent() { Cx = 990000L, Cy = 792000L },
+            //            new DW.EffectExtent() { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
+            //            new DW.DocProperties() { Id = (UInt32Value)1U, Name = "Picture" },
+            //            new DW.NonVisualGraphicFrameDrawingProperties(
+            //                new A.GraphicFrameLocks() { NoChangeAspect = true }),
+            //            new A.Graphic(
+            //                new A.GraphicData(
+            //                    new P.Picture(
+            //                        new P.NonVisualPictureProperties(
+            //                            new P.NonVisualDrawingProperties() { Id = (UInt32Value)0U, Name = "New Image" },
+            //                            new P.NonVisualPictureDrawingProperties()),
+            //                        new P.BlipFill(
+            //                            new A.Blip() { Embed = relationshipId },
+            //                            new A.Stretch(new A.FillRectangle())),
+            //                        new P.ShapeProperties(new A.Transform2D(
+            //                            new A.Offset() { X = 0L, Y = 0L },
+            //                            new A.Extents() { Cx = 990000L, Cy = 792000L }),
+            //                            new A.PresetGeometry() { Preset = A.ShapeTypeValues.Rectangle })))
+            //                )
+            //            { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+            //        ));
+
+            mainPart.Document.Body.Append(new Paragraph(new Run(element)));
+        }
+
         public static CustomDocument ParseWordToCustom(string docxPath)
         {
             if (!File.Exists(docxPath))

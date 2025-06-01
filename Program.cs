@@ -144,6 +144,30 @@ class Program
         ZipFile.CreateFromDirectory(workPath, zipFilePath);
     }
 
+    static void convertToDocx(string filePath, string docxFilePath)
+    {
+        string workPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(workPath);
+        ZipFile.ExtractToDirectory(filePath, workPath);
+
+        string mainJsonPath = Path.Combine(workPath, "main.json"); // 读取 main.json 文件
+        string questionJsonPath = Path.Combine(workPath, "question.json");
+        string mapJsonPath = Path.Combine(workPath, "map.json");
+        string projectJsonPath = Path.Combine(workPath, "project.json");
+
+        string mapJsonData = File.ReadAllText(mapJsonPath);
+        string mainJsonData = File.ReadAllText(mainJsonPath);
+
+        string questionJsonData = File.ReadAllText(questionJsonPath);
+        TemplateStyleData.Styles = JsonConvert.DeserializeObject<List<StyleCategory>>(questionJsonData);
+
+        string projectJsonData = File.ReadAllText(projectJsonPath);
+        var inputDataList = JsonConvert.DeserializeObject<List<InputData>>(projectJsonData, new InputDataConverter());
+
+        MathConverter.ConvertLatexToOmml("$\\sqrt{3}$");
+        CustomDocument cd = WordToCustomConverter.ParseWordToCustom(filePath);
+
+    }
 
     static void Main(string[] args)
     {
@@ -161,7 +185,11 @@ class Program
                 toZip = true;
             } else if (inFilePath.EndsWith(".zip"))
             {
-                outFilePath = System.IO.Path.Combine(System.IO.Path.GetFileNameWithoutExtension(inFilePath), ".docx");
+                outFilePath = inFilePath.Substring(0, inFilePath.Length - 4); // Remove the .zip extension
+                if (!outFilePath.EndsWith(".docx"))
+                {
+                    outFilePath = outFilePath + ".docx";
+                }
                 toZip = false;
             } else
             {
@@ -185,6 +213,10 @@ class Program
         if (toZip)
         {
             convertToZip(inFilePath, outFilePath);
+        } else
+        {
+            convertToDocx(inFilePath, outFilePath);
+
         }
 
 
